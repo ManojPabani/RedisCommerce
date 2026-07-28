@@ -75,6 +75,8 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 // Expiration event monitoring (Redis keyspace notifications).
 builder.Services.AddScoped<IExpirationNotificationService, ExpirationNotificationService>();
 builder.Services.AddHostedService<RedisExpirationListener>();
+builder.Services.AddHostedService<SessionCleanupWorker>();
+builder.Services.AddHostedService<DailyAnalyticsWorker>();
 
 builder.Services.AddScoped<IProductService, ProductService>();
 
