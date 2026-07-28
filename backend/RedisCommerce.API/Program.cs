@@ -23,7 +23,15 @@ builder.Services.AddDbContext<RedisCommerceDbContext>(options =>
 builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(RedisOptions.SectionName));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(sp.GetRequiredService<IOptions<RedisOptions>>().Value.ConnectionString));
+{
+    var connectionString = sp.GetRequiredService<IOptions<RedisOptions>>().Value.ConnectionString;
+    var configuration = ConfigurationOptions.Parse(connectionString);
+
+    // Required for RedisExpirationListener's CONFIG SET notify-keyspace-events on startup.
+    configuration.AllowAdmin = true;
+
+    return ConnectionMultiplexer.Connect(configuration);
+});
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
@@ -63,6 +71,10 @@ builder.Services.AddScoped<IActivityTrackingService, ActivityTrackingService>();
 // Session management (Redis String + sliding TTL).
 builder.Services.AddScoped<ISessionRepository, RedisSessionRepository>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+
+// Expiration event monitoring (Redis keyspace notifications).
+builder.Services.AddScoped<IExpirationNotificationService, ExpirationNotificationService>();
+builder.Services.AddHostedService<RedisExpirationListener>();
 
 builder.Services.AddScoped<IProductService, ProductService>();
 
