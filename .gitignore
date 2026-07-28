@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Node (frontend also has its own .gitignore)
+node_modules/
+dist/
+dist-ssr/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.log
