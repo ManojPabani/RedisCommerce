@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
+using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
 
 namespace RedisCommerce.Application.Services;
@@ -7,11 +8,16 @@ namespace RedisCommerce.Application.Services;
 public class ActivityTrackingService : IActivityTrackingService
 {
     private readonly IActivityTrackingRepository _repository;
+    private readonly ISortedSetService _sortedSetService;
     private readonly ILogger<ActivityTrackingService> _logger;
 
-    public ActivityTrackingService(IActivityTrackingRepository repository, ILogger<ActivityTrackingService> logger)
+    public ActivityTrackingService(
+        IActivityTrackingRepository repository,
+        ISortedSetService sortedSetService,
+        ILogger<ActivityTrackingService> logger)
     {
         _repository = repository;
+        _sortedSetService = sortedSetService;
         _logger = logger;
     }
 
@@ -37,4 +43,14 @@ public class ActivityTrackingService : IActivityTrackingService
 
     public async Task<bool> IsUserActiveTodayAsync(int userId) =>
         await _repository.IsActiveAsync(DateOnly.FromDateTime(DateTime.UtcNow), userId);
+
+    public async Task<MostActiveDayResponse> GetMostActiveDayAsync()
+    {
+        var topEntry = await _sortedSetService.RangeDescendingAsync(CacheKeys.DailyActiveCounts, 0, 0);
+        var entry = topEntry.FirstOrDefault();
+
+        return entry is null
+            ? new MostActiveDayResponse(null, 0)
+            : new MostActiveDayResponse(entry.Member, (long)entry.Score);
+    }
 }
