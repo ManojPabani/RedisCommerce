@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.API.Middleware;
 using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
 
@@ -11,6 +12,8 @@ namespace RedisCommerce.API.Controllers;
 [Route("api/products")]
 public class ProductsController : ControllerBase
 {
+    private const string VisitorHeaderName = "X-Visitor-Id";
+
     private readonly IProductService _productService;
     private readonly IProductPopularityService _popularityService;
     private readonly IValidator<CreateProductRequest> _createValidator;
@@ -44,12 +47,21 @@ public class ProductsController : ControllerBase
         return Ok(popular);
     }
 
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IEnumerable<ProductResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ProductResponse>>> Search([FromQuery] string query)
+    {
+        var results = await _productService.SearchAsync(query, HttpContext.GetSessionUserId());
+        return Ok(results);
+    }
+
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductResponse>> GetById(int id)
     {
-        var product = await _productService.GetByIdAsync(id);
+        var visitorId = Request.Headers.TryGetValue(VisitorHeaderName, out var header) ? header.ToString() : null;
+        var product = await _productService.GetByIdAsync(id, HttpContext.GetSessionUserId(), visitorId);
         return Ok(product);
     }
 

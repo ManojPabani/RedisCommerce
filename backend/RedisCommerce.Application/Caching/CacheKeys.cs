@@ -14,4 +14,8 @@ public static class CacheKeys
     public static string SessionUserMapping(int userId) => $"session:user:{userId}";
 
     public static string Activity(DateOnly date) => $"activity:{date:yyyyMMdd}";
+
+    public static string VisitorsDaily(DateOnly date) => $"visitors:daily:{date:yyyyMMdd}";
+    public static string VisitorsWeekly(int isoYear, int isoWeek) => $"visitors:weekly:{isoYear}W{isoWeek:D2}";
+    public static string VisitorsMonthly(int year, int month) => $"visitors:monthly:{year}{month:D2}";
 }

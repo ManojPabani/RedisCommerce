@@ -17,11 +17,15 @@ public class ProductServiceTests
     private readonly Mock<IProductRepository> _repository = new();
     private readonly Mock<IRedisCacheService> _cache = new();
     private readonly Mock<IProductPopularityService> _popularity = new();
+    private readonly Mock<ITTLPolicyProvider> _ttlPolicy = new();
+    private readonly Mock<IActivityTrackingService> _activityTracking = new();
+    private readonly Mock<IVisitorAnalyticsService> _visitorAnalytics = new();
     private readonly ProductService _sut;
 
     public ProductServiceTests()
     {
-        _sut = new ProductService(_repository.Object, _cache.Object, _popularity.Object, Mock.Of<ILogger<ProductService>>());
+        _ttlPolicy.Setup(t => t.GetTtl(RedisObjectType.Product)).Returns(TimeSpan.FromMinutes(30));
+        _sut = new ProductService(_repository.Object, _cache.Object, _popularity.Object, _ttlPolicy.Object, _activityTracking.Object, _visitorAnalytics.Object, Mock.Of<ILogger<ProductService>>());
     }
 
     private static Product CreateProduct(int id = 1) => new()
