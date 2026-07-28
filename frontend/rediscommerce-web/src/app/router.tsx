@@ -7,6 +7,10 @@ import { PopularProductsPage } from '../features/products/pages/PopularProductsP
 import { CartPage } from '../features/cart/pages/CartPage'
 import { FavoritesPage } from '../features/favorites/pages/FavoritesPage'
 import { OrderConfirmationPage } from '../features/orders/pages/OrderConfirmationPage'
+import { AnalyticsDashboardPage } from '../features/admin/pages/AnalyticsDashboardPage'
+import { UserSessionsPage } from '../features/admin/pages/UserSessionsPage'
+import { VisitorAnalyticsPage } from '../features/admin/pages/VisitorAnalyticsPage'
+import { DailyActivityPage } from '../features/admin/pages/DailyActivityPage'
 
 export const router = createBrowserRouter([
   {
@@ -21,6 +25,10 @@ export const router = createBrowserRouter([
       { path: 'cart', element: <CartPage /> },
       { path: 'favorites', element: <FavoritesPage /> },
       { path: 'orders/:id', element: <OrderConfirmationPage /> },
+      { path: 'admin/dashboard', element: <AnalyticsDashboardPage /> },
+      { path: 'admin/sessions', element: <UserSessionsPage /> },
+      { path: 'admin/visitors', element: <VisitorAnalyticsPage /> },
+      { path: 'admin/activity', element: <DailyActivityPage /> },
     ],
   },
 ])
