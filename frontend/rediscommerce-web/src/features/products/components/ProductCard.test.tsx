@@ -44,7 +44,9 @@ describe('ProductCard', () => {
   it('links to the product details page', () => {
     renderWithProviders(<ProductCard product={product} />)
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/products/1')
+    const links = screen.getAllByRole('link')
+    expect(links.length).toBeGreaterThan(0)
+    expect(links.every((link) => link.getAttribute('href') === '/products/1')).toBe(true)
   })
 
   it('renders an Add to Cart button', () => {

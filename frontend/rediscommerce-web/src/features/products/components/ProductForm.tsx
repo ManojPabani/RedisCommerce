@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button } from '../../../shared/components/Button'
+import { Field, Input, Textarea } from '../../../shared/components/Input'
 import type { CreateProductRequest, Product } from '../models/product'
 
 interface ProductFormProps {
@@ -7,6 +8,7 @@ interface ProductFormProps {
   submitLabel: string
   isSubmitting?: boolean
   onSubmit: (request: CreateProductRequest) => void
+  onCancel?: () => void
 }
 
 interface FormErrors {
@@ -16,7 +18,13 @@ interface FormErrors {
   stockQuantity?: string
 }
 
-export function ProductForm({ initialValue, submitLabel, isSubmitting, onSubmit }: ProductFormProps) {
+export function ProductForm({
+  initialValue,
+  submitLabel,
+  isSubmitting,
+  onSubmit,
+  onCancel,
+}: ProductFormProps) {
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
   const [price, setPrice] = useState(initialValue?.price.toString() ?? '')
@@ -47,68 +55,67 @@ export function ProductForm({ initialValue, submitLabel, isSubmitting, onSubmit 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-          Name
-        </label>
-        <input
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <Field label="Name" htmlFor="name" error={errors.name}>
+        <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+          invalid={Boolean(errors.name)}
+          aria-describedby={errors.name ? 'name-error' : undefined}
+          placeholder="e.g. Mechanical Keyboard"
         />
-        {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-          Description
-        </label>
-        <textarea
+      <Field label="Description" htmlFor="description" error={errors.description}>
+        <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+          invalid={Boolean(errors.description)}
+          aria-describedby={errors.description ? 'description-error' : undefined}
+          rows={4}
+          placeholder="What makes this product special?"
         />
-        {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-      </div>
+      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="price" className="block text-sm font-medium text-slate-700">
-            Price
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <Field label="Price" htmlFor="price" error={errors.price}>
+          <Input
             id="price"
             type="number"
             step="0.01"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+            invalid={Boolean(errors.price)}
+            aria-describedby={errors.price ? 'price-error' : undefined}
+            placeholder="0.00"
           />
-          {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor="stockQuantity" className="block text-sm font-medium text-slate-700">
-            Stock Quantity
-          </label>
-          <input
+        <Field label="Stock Quantity" htmlFor="stockQuantity" error={errors.stockQuantity}>
+          <Input
             id="stockQuantity"
             type="number"
             value={stockQuantity}
             onChange={(e) => setStockQuantity(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+            invalid={Boolean(errors.stockQuantity)}
+            aria-describedby={errors.stockQuantity ? 'stockQuantity-error' : undefined}
+            placeholder="0"
           />
-          {errors.stockQuantity && <p className="mt-1 text-sm text-red-600">{errors.stockQuantity}</p>}
-        </div>
+        </Field>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving...' : submitLabel}
-      </Button>
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : submitLabel}
+        </Button>
+      </div>
     </form>
   )
 }

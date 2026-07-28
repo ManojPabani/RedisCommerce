@@ -13,6 +13,13 @@ export const productService = {
     return data
   },
 
+  async searchProducts(query: string): Promise<Product[]> {
+    const { data } = await axiosClient.get<Product[]>(API_ROUTES.productSearch, {
+      params: { query },
+    })
+    return data
+  },
+
   async getProductById(id: number): Promise<Product> {
     const { data } = await axiosClient.get<Product>(API_ROUTES.product(id))
     return data
