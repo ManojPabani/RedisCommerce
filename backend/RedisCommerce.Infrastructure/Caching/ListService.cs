@@ -30,4 +30,15 @@ public class ListService : RedisServiceBase, IListService
 
     public async Task<long> LengthAsync(string key) =>
         await Database.ListLengthAsync(key);
+
+    public async Task<IReadOnlyList<string>> RangeAsync(string key, long start, long stop)
+    {
+        var values = await Database.ListRangeAsync(key, start, stop);
+        return values.Select(v => v.ToString()).ToList();
+    }
+
+    public async Task TrimAsync(string key, long start, long stop)
+    {
+        await Database.ListTrimAsync(key, start, stop);
+    }
 }

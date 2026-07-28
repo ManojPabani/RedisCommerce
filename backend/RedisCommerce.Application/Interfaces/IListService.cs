@@ -7,4 +7,6 @@ public interface IListService
     Task<string?> LeftPopAsync(string key);
     Task<string?> RightPopAsync(string key);
     Task<long> LengthAsync(string key);
+    Task<IReadOnlyList<string>> RangeAsync(string key, long start, long stop);
+    Task TrimAsync(string key, long start, long stop);
 }
