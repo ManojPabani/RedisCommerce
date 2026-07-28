@@ -25,7 +25,14 @@ public class OrderProcessingWorker : BackgroundService
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            await ProcessNextOrderAsync();
+            try
+            {
+                await ProcessNextOrderAsync();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Order processing tick failed; will retry on the next interval");
+            }
         }
     }
 

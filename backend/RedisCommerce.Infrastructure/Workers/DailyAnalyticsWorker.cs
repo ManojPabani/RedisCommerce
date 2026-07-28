@@ -31,7 +31,14 @@ public class DailyAnalyticsWorker : BackgroundService
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            await GenerateSnapshotAsync();
+            try
+            {
+                await GenerateSnapshotAsync();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Daily analytics tick failed; will retry on the next interval");
+            }
         }
     }
 

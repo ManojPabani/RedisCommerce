@@ -29,7 +29,14 @@ public class SessionCleanupWorker : BackgroundService
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            await CleanupOrphanedSessionsAsync();
+            try
+            {
+                await CleanupOrphanedSessionsAsync();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Session cleanup tick failed; will retry on the next interval");
+            }
         }
     }
 
