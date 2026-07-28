@@ -6,6 +6,7 @@ public static class CacheKeys
     public const string OrderProcessingQueue = "order-processing";
     public const string ActiveSessions = "sessions:active";
     public const string ExpirationEvents = "expiration-events";
+    public const string DailyActiveCounts = "analytics:daily-active-counts";
 
     public static string Product(int id) => $"product:{id}";
     public static string Cart(int userId) => $"cart:{userId}";
