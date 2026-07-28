@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.API.Extensions;
 using RedisCommerce.API.Middleware;
 using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
@@ -70,10 +71,8 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ProductResponse>> Create(CreateProductRequest request)
     {
-        var validationResult = await _createValidator.ValidateAsync(request);
-        if (!validationResult.IsValid)
+        if (!this.ApplyValidationErrors(await _createValidator.ValidateAsync(request)))
         {
-            AddValidationErrors(validationResult);
             return ValidationProblem(ModelState);
         }
 
@@ -87,10 +86,8 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductResponse>> Update(int id, UpdateProductRequest request)
     {
-        var validationResult = await _updateValidator.ValidateAsync(request);
-        if (!validationResult.IsValid)
+        if (!this.ApplyValidationErrors(await _updateValidator.ValidateAsync(request)))
         {
-            AddValidationErrors(validationResult);
             return ValidationProblem(ModelState);
         }
 
@@ -105,13 +102,5 @@ public class ProductsController : ControllerBase
     {
         await _productService.DeleteAsync(id);
         return NoContent();
-    }
-
-    private void AddValidationErrors(FluentValidation.Results.ValidationResult validationResult)
-    {
-        foreach (var error in validationResult.Errors)
-        {
-            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
-        }
     }
 }

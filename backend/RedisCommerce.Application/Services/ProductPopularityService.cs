@@ -31,16 +31,30 @@ public class ProductPopularityService : IProductPopularityService
     {
         var topScored = await _popularityRepository.GetTopAsync(count);
 
-        var popularProducts = new List<PopularProductResponse>();
+        var orderedIds = new List<int>();
+        var scoresById = new Dictionary<int, double>();
+
         foreach (var scored in topScored)
         {
-            var product = await _productRepository.GetByIdAsync(int.Parse(scored.Member));
-            if (product is not null)
+            if (!int.TryParse(scored.Member, out var productId))
             {
-                popularProducts.Add(new PopularProductResponse(product.Id, product.Name, product.Price, scored.Score));
+                _logger.LogWarning("Skipping non-numeric popularity member {Member}", scored.Member);
+                continue;
             }
+
+            orderedIds.Add(productId);
+            scoresById[productId] = scored.Score;
         }
 
-        return popularProducts;
+        var products = await _productRepository.GetByIdsAsync(orderedIds);
+
+        return orderedIds
+            .Where(products.ContainsKey)
+            .Select(id =>
+            {
+                var product = products[id];
+                return new PopularProductResponse(product.Id, product.Name, product.Price, scoresById[id]);
+            })
+            .ToList();
     }
 }

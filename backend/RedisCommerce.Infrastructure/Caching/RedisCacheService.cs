@@ -1,18 +1,15 @@
-using Microsoft.Extensions.Logging;
-using RedisCommerce.Application.Interfaces;
 using StackExchange.Redis;
+using RedisCommerce.Application.Interfaces;
 
 namespace RedisCommerce.Infrastructure.Caching;
 
 public class RedisCacheService : IRedisCacheService
 {
     private readonly IConnectionMultiplexer _connectionMultiplexer;
-    private readonly ILogger<RedisCacheService> _logger;
 
-    public RedisCacheService(IConnectionMultiplexer connectionMultiplexer, ILogger<RedisCacheService> logger)
+    public RedisCacheService(IConnectionMultiplexer connectionMultiplexer)
     {
         _connectionMultiplexer = connectionMultiplexer;
-        _logger = logger;
     }
 
     private IDatabase Database => _connectionMultiplexer.GetDatabase();

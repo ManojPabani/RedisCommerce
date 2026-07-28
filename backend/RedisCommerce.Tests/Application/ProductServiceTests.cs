@@ -123,4 +123,45 @@ public class ProductServiceTests
 
         await Assert.ThrowsAsync<ProductNotFoundException>(() => _sut.DeleteAsync(999));
     }
+
+    [Fact]
+    public async Task SearchAsync_BlankQuery_ReturnsEmptyWithoutHittingRepositoryOrActivity()
+    {
+        var result = await _sut.SearchAsync("   ");
+
+        Assert.Empty(result);
+        _repository.Verify(r => r.SearchAsync(It.IsAny<string>()), Times.Never);
+        _activityTracking.Verify(a => a.TrackActivityAsync(It.IsAny<int>(), It.IsAny<ActivityType>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithQuery_ReturnsMappedProductsAndTracksSearchActivity()
+    {
+        var product = CreateProduct();
+        _repository.Setup(r => r.SearchAsync("keyboard")).ReturnsAsync([product]);
+
+        var result = (await _sut.SearchAsync("keyboard", viewerUserId: 1001)).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(product.Id, result[0].Id);
+        _activityTracking.Verify(a => a.TrackActivityAsync(1001, ActivityType.Search), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_MalformedCachePayload_FallsBackToRepository()
+    {
+        var product = CreateProduct();
+        _cache.Setup(c => c.GetAsync(CacheKeys.Product(product.Id))).ReturnsAsync("not-valid-json");
+        _repository.Setup(r => r.GetByIdAsync(product.Id)).ReturnsAsync(product);
+
+        var result = await _sut.GetByIdAsync(product.Id);
+
+        Assert.Equal(product.Id, result.Id);
+        _repository.Verify(r => r.GetByIdAsync(product.Id), Times.Once);
+        _cache.Verify(c => c.SetAsync(
+            CacheKeys.Product(product.Id),
+            It.IsAny<string>(),
+            TimeSpan.FromMinutes(30)),
+            Times.Once);
+    }
 }

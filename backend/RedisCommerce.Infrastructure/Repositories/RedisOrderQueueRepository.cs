@@ -20,7 +20,12 @@ public class RedisOrderQueueRepository : IOrderQueueRepository
     public async Task<int?> DequeueAsync()
     {
         var value = await _listService.RightPopAsync(CacheKeys.OrderProcessingQueue);
-        return value is null ? null : int.Parse(value);
+        if (value is null)
+        {
+            return null;
+        }
+
+        return int.TryParse(value, out var orderId) ? orderId : null;
     }
 
     public async Task<long> QueueLengthAsync() =>

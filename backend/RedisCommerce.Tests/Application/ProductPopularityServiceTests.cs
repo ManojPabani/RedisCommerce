@@ -44,8 +44,13 @@ public class ProductPopularityServiceTests
             new ScoredMember("10", 5),
             new ScoredMember("50", 3),
         ]);
-        _productRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(CreateProduct(10));
-        _productRepository.Setup(r => r.GetByIdAsync(50)).ReturnsAsync(CreateProduct(50));
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10),
+                [50] = CreateProduct(50),
+            });
 
         var result = await _sut.GetTopProductsAsync(2);
 
@@ -63,8 +68,32 @@ public class ProductPopularityServiceTests
             new ScoredMember("10", 5),
             new ScoredMember("999", 3),
         ]);
-        _productRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(CreateProduct(10));
-        _productRepository.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Product?)null);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10),
+            });
+
+        var result = await _sut.GetTopProductsAsync(2);
+
+        Assert.Single(result);
+        Assert.Equal(10, result[0].ProductId);
+    }
+
+    [Fact]
+    public async Task GetTopProductsAsync_NonNumericMember_IsSkipped()
+    {
+        _popularityRepository.Setup(r => r.GetTopAsync(2)).ReturnsAsync([
+            new ScoredMember("10", 5),
+            new ScoredMember("not-a-number", 3),
+        ]);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.Is<IEnumerable<int>>(ids => ids.Single() == 10)))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10),
+            });
 
         var result = await _sut.GetTopProductsAsync(2);
 

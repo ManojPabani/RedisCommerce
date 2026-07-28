@@ -70,4 +70,18 @@ public class ExpirationNotificationServiceTests
         Assert.Equal("session:abc", result[0].Key);
         Assert.Equal("Session Expired", result[0].EventType);
     }
+
+    [Fact]
+    public async Task GetRecentEventsAsync_SkipsMalformedPayloads()
+    {
+        var event1 = new ExpirationEventResponse("session:abc", "Session Expired", DateTime.UtcNow);
+        _listService
+            .Setup(l => l.RangeAsync(CacheKeys.ExpirationEvents, 0, 9))
+            .ReturnsAsync([JsonSerializer.Serialize(event1), "not-json"]);
+
+        var result = await _sut.GetRecentEventsAsync(10);
+
+        Assert.Single(result);
+        Assert.Equal("session:abc", result[0].Key);
+    }
 }

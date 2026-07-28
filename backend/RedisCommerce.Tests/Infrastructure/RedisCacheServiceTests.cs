@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Moq;
 using RedisCommerce.Infrastructure.Caching;
 using StackExchange.Redis;
@@ -18,7 +17,7 @@ public class RedisCacheServiceTests
             .Setup(m => m.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
             .Returns(_database.Object);
 
-        _sut = new RedisCacheService(_connectionMultiplexer.Object, Mock.Of<ILogger<RedisCacheService>>());
+        _sut = new RedisCacheService(_connectionMultiplexer.Object);
     }
 
     [Fact]

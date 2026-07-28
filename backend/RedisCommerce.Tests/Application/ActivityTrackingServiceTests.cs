@@ -52,6 +52,13 @@ public class ActivityTrackingServiceTests
     }
 
     [Fact]
+    public async Task GetLastNDaysUniqueCountAsync_NonPositiveDays_ThrowsArgumentOutOfRangeException()
+    {
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => _sut.GetLastNDaysUniqueCountAsync(0));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => _sut.GetLastNDaysUniqueCountAsync(-3));
+    }
+
+    [Fact]
     public async Task IsUserActiveTodayAsync_DelegatesToRepositoryForToday()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

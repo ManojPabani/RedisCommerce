@@ -65,8 +65,13 @@ public class OrderServiceTests
             new CartItemResponse(10, 2),
             new CartItemResponse(50, 1),
         ]));
-        _productRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(CreateProduct(10, 20m));
-        _productRepository.Setup(r => r.GetByIdAsync(50)).ReturnsAsync(CreateProduct(50, 15m));
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10, 20m),
+                [50] = CreateProduct(50, 15m),
+            });
 
         var result = await _sut.CheckoutAsync(new CheckoutRequest(1001));
 
@@ -81,7 +86,12 @@ public class OrderServiceTests
         _cartService.Setup(c => c.GetCartAsync(1001)).ReturnsAsync(new CartResponse(1001, [
             new CartItemResponse(10, 1),
         ]));
-        _productRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(CreateProduct(10, 20m));
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10, 20m),
+            });
 
         await _sut.CheckoutAsync(new CheckoutRequest(1001));
 
@@ -90,12 +100,37 @@ public class OrderServiceTests
     }
 
     [Fact]
+    public async Task CheckoutAsync_ValidCart_EnqueuesBeforeClearingCart()
+    {
+        _cartService.Setup(c => c.GetCartAsync(1001)).ReturnsAsync(new CartResponse(1001, [
+            new CartItemResponse(10, 1),
+        ]));
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10, 20m),
+            });
+
+        var sequence = new MockSequence();
+        _orderQueueRepository.InSequence(sequence).Setup(q => q.EnqueueAsync(123)).Returns(Task.CompletedTask);
+        _cartService.InSequence(sequence).Setup(c => c.ClearCartAsync(1001)).Returns(Task.CompletedTask);
+
+        await _sut.CheckoutAsync(new CheckoutRequest(1001));
+
+        _orderQueueRepository.Verify(q => q.EnqueueAsync(123), Times.Once);
+        _cartService.Verify(c => c.ClearCartAsync(1001), Times.Once);
+    }
+
+    [Fact]
     public async Task CheckoutAsync_CartReferencesDeletedProduct_ThrowsProductNotFoundException()
     {
         _cartService.Setup(c => c.GetCartAsync(1001)).ReturnsAsync(new CartResponse(1001, [
             new CartItemResponse(999, 1),
         ]));
-        _productRepository.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Product?)null);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>());
 
         await Assert.ThrowsAsync<ProductNotFoundException>(() => _sut.CheckoutAsync(new CheckoutRequest(1001)));
 

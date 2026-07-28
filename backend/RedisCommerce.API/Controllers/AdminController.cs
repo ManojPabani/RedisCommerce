@@ -46,8 +46,14 @@ public class AdminController : ControllerBase
 
     [HttpGet("activity/count")]
     [ProducesResponseType(typeof(long), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<long>> GetActivityCount([FromQuery] int days = 1)
     {
+        if (days <= 0)
+        {
+            return BadRequest("days must be greater than 0.");
+        }
+
         return Ok(await _activityTrackingService.GetLastNDaysUniqueCountAsync(days));
     }
 

@@ -36,6 +36,8 @@ public class ActivityTrackingService : IActivityTrackingService
 
     public async Task<long> GetLastNDaysUniqueCountAsync(int days)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(days, 0);
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var dates = Enumerable.Range(0, days).Select(offset => today.AddDays(-offset)).ToList();
         return await _repository.GetUniqueCountOverRangeAsync(dates);

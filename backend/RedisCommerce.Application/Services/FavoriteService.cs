@@ -25,16 +25,16 @@ public class FavoriteService : IFavoriteService
     public async Task<FavoritesResponse> GetFavoritesAsync(int userId)
     {
         var productIds = await _favoriteRepository.GetAllAsync(userId);
+        var products = await _productRepository.GetByIdsAsync(productIds);
 
-        var favoriteProducts = new List<FavoriteProductResponse>();
-        foreach (var productId in productIds)
-        {
-            var product = await _productRepository.GetByIdAsync(productId);
-            if (product is not null)
+        var favoriteProducts = productIds
+            .Where(products.ContainsKey)
+            .Select(id =>
             {
-                favoriteProducts.Add(new FavoriteProductResponse(product.Id, product.Name, product.Price));
-            }
-        }
+                var product = products[id];
+                return new FavoriteProductResponse(product.Id, product.Name, product.Price);
+            })
+            .ToList();
 
         return new FavoritesResponse(userId, favoriteProducts);
     }

@@ -17,13 +17,23 @@ public class RedisCartRepository : ICartRepository
     public async Task<IDictionary<int, int>> GetCartAsync(int userId)
     {
         var entries = await _hashService.HashGetAllAsync(CacheKeys.Cart(userId));
-        return entries.ToDictionary(e => int.Parse(e.Key), e => int.Parse(e.Value));
+        var cart = new Dictionary<int, int>();
+
+        foreach (var entry in entries)
+        {
+            if (int.TryParse(entry.Key, out var productId) && int.TryParse(entry.Value, out var quantity))
+            {
+                cart[productId] = quantity;
+            }
+        }
+
+        return cart;
     }
 
     public async Task<int?> GetItemQuantityAsync(int userId, int productId)
     {
         var value = await _hashService.HashGetAsync(CacheKeys.Cart(userId), productId.ToString());
-        return value is null ? null : int.Parse(value);
+        return value is not null && int.TryParse(value, out var quantity) ? quantity : null;
     }
 
     public async Task SetItemQuantityAsync(int userId, int productId, int quantity)

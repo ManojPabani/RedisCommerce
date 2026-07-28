@@ -1,5 +1,7 @@
 using Asp.Versioning;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.API.Extensions;
 using RedisCommerce.API.Middleware;
 using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
@@ -12,16 +14,24 @@ namespace RedisCommerce.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly ISessionService _sessionService;
+    private readonly IValidator<LoginRequest> _loginValidator;
 
-    public AuthController(ISessionService sessionService)
+    public AuthController(ISessionService sessionService, IValidator<LoginRequest> loginValidator)
     {
         _sessionService = sessionService;
+        _loginValidator = loginValidator;
     }
 
     [HttpPost("login")]
     [ProducesResponseType(typeof(SessionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SessionResponse>> Login(LoginRequest request)
     {
+        if (!this.ApplyValidationErrors(await _loginValidator.ValidateAsync(request)))
+        {
+            return ValidationProblem(ModelState);
+        }
+
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 

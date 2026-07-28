@@ -40,11 +40,16 @@ public class OrderService : IOrderService
             throw new EmptyCartException(request.UserId);
         }
 
+        var productIds = cart.Items.Select(item => item.ProductId);
+        var products = await _productRepository.GetByIdsAsync(productIds);
+
         var orderItems = new List<OrderItem>();
         foreach (var cartItem in cart.Items)
         {
-            var product = await _productRepository.GetByIdAsync(cartItem.ProductId)
-                ?? throw new ProductNotFoundException(cartItem.ProductId);
+            if (!products.TryGetValue(cartItem.ProductId, out var product))
+            {
+                throw new ProductNotFoundException(cartItem.ProductId);
+            }
 
             orderItems.Add(new OrderItem
             {
@@ -67,9 +72,8 @@ public class OrderService : IOrderService
         };
 
         var created = await _orderRepository.AddAsync(order);
-        await _cartService.ClearCartAsync(request.UserId);
-
         await _orderQueueRepository.EnqueueAsync(created.Id);
+        await _cartService.ClearCartAsync(request.UserId);
         await _activityTracking.TrackActivityAsync(request.UserId, ActivityType.Checkout);
         _logger.LogInformation("Order Added To Queue: {OrderId}", created.Id);
 
