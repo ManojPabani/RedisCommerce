@@ -1,0 +1,105 @@
+using Asp.Versioning;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Interfaces;
+
+namespace RedisCommerce.API.Controllers;
+
+[ApiController]
+[ApiVersion("1.0")]
+[Route("api/products")]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _productService;
+    private readonly IProductPopularityService _popularityService;
+    private readonly IValidator<CreateProductRequest> _createValidator;
+    private readonly IValidator<UpdateProductRequest> _updateValidator;
+
+    public ProductsController(
+        IProductService productService,
+        IProductPopularityService popularityService,
+        IValidator<CreateProductRequest> createValidator,
+        IValidator<UpdateProductRequest> updateValidator)
+    {
+        _productService = productService;
+        _popularityService = popularityService;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<ProductResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ProductResponse>>> GetAll()
+    {
+        var products = await _productService.GetAllAsync();
+        return Ok(products);
+    }
+
+    [HttpGet("popular")]
+    [ProducesResponseType(typeof(IEnumerable<PopularProductResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PopularProductResponse>>> GetPopular()
+    {
+        var popular = await _popularityService.GetTopProductsAsync(20);
+        return Ok(popular);
+    }
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProductResponse>> GetById(int id)
+    {
+        var product = await _productService.GetByIdAsync(id);
+        return Ok(product);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ProductResponse>> Create(CreateProductRequest request)
+    {
+        var validationResult = await _createValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            AddValidationErrors(validationResult);
+            return ValidationProblem(ModelState);
+        }
+
+        var created = await _productService.CreateAsync(request);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProductResponse>> Update(int id, UpdateProductRequest request)
+    {
+        var validationResult = await _updateValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            AddValidationErrors(validationResult);
+            return ValidationProblem(ModelState);
+        }
+
+        var updated = await _productService.UpdateAsync(id, request);
+        return Ok(updated);
+    }
+
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _productService.DeleteAsync(id);
+        return NoContent();
+    }
+
+    private void AddValidationErrors(FluentValidation.Results.ValidationResult validationResult)
+    {
+        foreach (var error in validationResult.Errors)
+        {
+            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+        }
+    }
+}
