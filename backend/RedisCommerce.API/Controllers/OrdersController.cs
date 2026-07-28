@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.API.Extensions;
 using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
 
@@ -25,22 +26,12 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<OrderResponse>> Checkout(CheckoutRequest request)
     {
-        var validationResult = await _checkoutValidator.ValidateAsync(request);
-        if (!validationResult.IsValid)
+        if (!this.ApplyValidationErrors(await _checkoutValidator.ValidateAsync(request)))
         {
-            AddValidationErrors(validationResult);
             return ValidationProblem(ModelState);
         }
 
         var order = await _orderService.CheckoutAsync(request);
         return StatusCode(StatusCodes.Status201Created, order);
-    }
-
-    private void AddValidationErrors(FluentValidation.Results.ValidationResult validationResult)
-    {
-        foreach (var error in validationResult.Errors)
-        {
-            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
-        }
     }
 }

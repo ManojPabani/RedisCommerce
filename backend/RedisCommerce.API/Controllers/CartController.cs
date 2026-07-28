@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using RedisCommerce.API.Extensions;
 using RedisCommerce.Application.DTOs;
 using RedisCommerce.Application.Interfaces;
 
@@ -39,10 +40,8 @@ public class CartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CartResponse>> AddItem(int userId, AddCartItemRequest request)
     {
-        var validationResult = await _addValidator.ValidateAsync(request);
-        if (!validationResult.IsValid)
+        if (!this.ApplyValidationErrors(await _addValidator.ValidateAsync(request)))
         {
-            AddValidationErrors(validationResult);
             return ValidationProblem(ModelState);
         }
 
@@ -55,10 +54,8 @@ public class CartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CartResponse>> UpdateItem(int userId, int productId, UpdateCartItemRequest request)
     {
-        var validationResult = await _updateValidator.ValidateAsync(request);
-        if (!validationResult.IsValid)
+        if (!this.ApplyValidationErrors(await _updateValidator.ValidateAsync(request)))
         {
-            AddValidationErrors(validationResult);
             return ValidationProblem(ModelState);
         }
 
@@ -80,13 +77,5 @@ public class CartController : ControllerBase
     {
         await _cartService.ClearCartAsync(userId);
         return NoContent();
-    }
-
-    private void AddValidationErrors(FluentValidation.Results.ValidationResult validationResult)
-    {
-        foreach (var error in validationResult.Errors)
-        {
-            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
-        }
     }
 }
