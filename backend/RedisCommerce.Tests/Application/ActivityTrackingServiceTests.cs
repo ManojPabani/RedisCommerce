@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using Xunit;
@@ -9,11 +10,12 @@ namespace RedisCommerce.Tests.Application;
 public class ActivityTrackingServiceTests
 {
     private readonly Mock<IActivityTrackingRepository> _repository = new();
+    private readonly Mock<ISortedSetService> _sortedSetService = new();
     private readonly ActivityTrackingService _sut;
 
     public ActivityTrackingServiceTests()
     {
-        _sut = new ActivityTrackingService(_repository.Object, Mock.Of<ILogger<ActivityTrackingService>>());
+        _sut = new ActivityTrackingService(_repository.Object, _sortedSetService.Object, Mock.Of<ILogger<ActivityTrackingService>>());
     }
 
     [Fact]
@@ -58,5 +60,31 @@ public class ActivityTrackingServiceTests
         var result = await _sut.IsUserActiveTodayAsync(1001);
 
         Assert.True(result);
+    }
+
+    [Fact]
+    public async Task GetMostActiveDayAsync_ReturnsTopScoredEntry()
+    {
+        _sortedSetService
+            .Setup(s => s.RangeDescendingAsync(CacheKeys.DailyActiveCounts, 0, 0))
+            .ReturnsAsync(new List<ScoredMember> { new("20260601", 42) });
+
+        var result = await _sut.GetMostActiveDayAsync();
+
+        Assert.Equal("20260601", result.Date);
+        Assert.Equal(42, result.ActiveUserCount);
+    }
+
+    [Fact]
+    public async Task GetMostActiveDayAsync_ReturnsNullDate_WhenNoEntriesExist()
+    {
+        _sortedSetService
+            .Setup(s => s.RangeDescendingAsync(CacheKeys.DailyActiveCounts, 0, 0))
+            .ReturnsAsync(new List<ScoredMember>());
+
+        var result = await _sut.GetMostActiveDayAsync();
+
+        Assert.Null(result.Date);
+        Assert.Equal(0, result.ActiveUserCount);
     }
 }

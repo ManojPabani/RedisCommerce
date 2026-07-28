@@ -1,3 +1,5 @@
+using RedisCommerce.Application.DTOs;
+
 namespace RedisCommerce.Application.Interfaces;
 
 public enum ActivityType
@@ -15,4 +17,5 @@ public interface IActivityTrackingService
     Task<long> GetCountForDateAsync(DateOnly date);
     Task<long> GetLastNDaysUniqueCountAsync(int days);
     Task<bool> IsUserActiveTodayAsync(int userId);
+    Task<MostActiveDayResponse> GetMostActiveDayAsync();
 }
