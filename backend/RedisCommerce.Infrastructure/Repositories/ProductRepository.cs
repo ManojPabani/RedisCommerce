@@ -20,6 +20,12 @@ public class ProductRepository : IProductRepository
     public async Task<IEnumerable<Product>> GetAllAsync() =>
         await _context.Products.AsNoTracking().ToListAsync();
 
+    public async Task<IEnumerable<Product>> SearchAsync(string query) =>
+        await _context.Products
+            .AsNoTracking()
+            .Where(p => EF.Functions.Like(p.Name, $"%{query}%"))
+            .ToListAsync();
+
     public async Task<Product> AddAsync(Product product)
     {
         _context.Products.Add(product);

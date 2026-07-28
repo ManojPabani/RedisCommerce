@@ -8,4 +8,6 @@ public static class CacheKeys
     public static string Product(int id) => $"product:{id}";
     public static string Cart(int userId) => $"cart:{userId}";
     public static string Favorites(int userId) => $"favorites:{userId}";
+
+    public static string Activity(DateOnly date) => $"activity:{date:yyyyMMdd}";
 }
