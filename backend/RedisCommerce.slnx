@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="RedisCommerce.API/RedisCommerce.API.csproj" />
+  <Project Path="RedisCommerce.Application/RedisCommerce.Application.csproj" />
+  <Project Path="RedisCommerce.Domain/RedisCommerce.Domain.csproj" />
+  <Project Path="RedisCommerce.Infrastructure/RedisCommerce.Infrastructure.csproj" />
+  <Project Path="RedisCommerce.Tests/RedisCommerce.Tests.csproj" />
+</Solution>
