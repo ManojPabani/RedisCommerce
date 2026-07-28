@@ -42,14 +42,26 @@ public class ProductService : IProductService
         var key = CacheKeys.Product(id);
         var cached = await _cache.GetAsync(key);
 
-        ProductResponse response;
+        ProductResponse? response = null;
         if (cached is not null)
         {
-            _logger.LogInformation("CACHE HIT: {Key}", key);
-            await _popularity.RecordViewAsync(id);
-            response = JsonSerializer.Deserialize<ProductResponse>(cached)!;
+            try
+            {
+                response = JsonSerializer.Deserialize<ProductResponse>(cached);
+            }
+            catch (JsonException)
+            {
+                _logger.LogWarning("Malformed cache payload for {Key}; treating as miss", key);
+            }
+
+            if (response is not null)
+            {
+                _logger.LogInformation("CACHE HIT: {Key}", key);
+                await _popularity.RecordViewAsync(id);
+            }
         }
-        else
+
+        if (response is null)
         {
             _logger.LogInformation("CACHE MISS: {Key}", key);
 
@@ -83,6 +95,11 @@ public class ProductService : IProductService
 
     public async Task<IEnumerable<ProductResponse>> SearchAsync(string query, int? viewerUserId = null)
     {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
         var products = await _repository.SearchAsync(query);
 
         if (viewerUserId.HasValue)

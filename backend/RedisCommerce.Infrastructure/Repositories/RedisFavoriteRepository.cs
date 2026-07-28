@@ -21,7 +21,11 @@ public class RedisFavoriteRepository : IFavoriteRepository
     public async Task<IReadOnlyList<int>> GetAllAsync(int userId)
     {
         var members = await _setService.MembersAsync(CacheKeys.Favorites(userId));
-        return members.Select(int.Parse).ToList();
+        return members
+            .Select(member => int.TryParse(member, out var productId) ? productId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
     }
 
     public async Task<bool> IsFavoriteAsync(int userId, int productId) =>
