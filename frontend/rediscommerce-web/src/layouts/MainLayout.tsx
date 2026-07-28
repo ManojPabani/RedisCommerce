@@ -18,6 +18,9 @@ export function MainLayout() {
             <Link to="/cart" className="text-slate-600 hover:text-slate-900">
               Cart
             </Link>
+            <Link to="/admin/dashboard" className="text-slate-600 hover:text-slate-900">
+              Analytics
+            </Link>
             <Link to="/products/new" className="text-blue-600 hover:text-blue-700">
               + Add Product
             </Link>
