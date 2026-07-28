@@ -15,6 +15,7 @@ public class OrderServiceTests
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IOrderRepository> _orderRepository = new();
     private readonly Mock<IOrderQueueRepository> _orderQueueRepository = new();
+    private readonly Mock<IActivityTrackingService> _activityTracking = new();
     private readonly OrderService _sut;
 
     public OrderServiceTests()
@@ -24,6 +25,7 @@ public class OrderServiceTests
             _productRepository.Object,
             _orderRepository.Object,
             _orderQueueRepository.Object,
+            _activityTracking.Object,
             Mock.Of<ILogger<OrderService>>());
 
         _orderRepository

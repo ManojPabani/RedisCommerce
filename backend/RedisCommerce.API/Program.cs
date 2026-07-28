@@ -28,11 +28,12 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
 
-// Generic Redis data-structure services (Phase 2).
+// Generic Redis data-structure services (Phase 2 + Phase 3).
 builder.Services.AddScoped<IHashService, HashService>();
 builder.Services.AddScoped<IListService, ListService>();
 builder.Services.AddScoped<ISetService, SetService>();
 builder.Services.AddScoped<ISortedSetService, SortedSetService>();
+builder.Services.AddScoped<IBitmapService, BitmapService>();
 
 // Centralized TTL policy (Phase 3).
 builder.Services.AddScoped<ITTLPolicyProvider, TTLPolicyProvider>();
@@ -54,6 +55,10 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderQueueRepository, RedisOrderQueueRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddHostedService<OrderProcessingWorker>();
+
+// User activity tracking (Redis Bitmap).
+builder.Services.AddScoped<IActivityTrackingRepository, RedisActivityTrackingRepository>();
+builder.Services.AddScoped<IActivityTrackingService, ActivityTrackingService>();
 
 builder.Services.AddScoped<IProductService, ProductService>();
 
