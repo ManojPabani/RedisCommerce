@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { MainLayout } from '../layouts/MainLayout'
+import { AdminLayout } from '../layouts/AdminLayout'
 import { ProductListPage } from '../features/products/pages/ProductListPage'
 import { ProductDetailsPage } from '../features/products/pages/ProductDetailsPage'
 import { ProductEditPage } from '../features/products/pages/ProductEditPage'
@@ -25,10 +26,16 @@ export const router = createBrowserRouter([
       { path: 'cart', element: <CartPage /> },
       { path: 'favorites', element: <FavoritesPage /> },
       { path: 'orders/:id', element: <OrderConfirmationPage /> },
-      { path: 'admin/dashboard', element: <AnalyticsDashboardPage /> },
-      { path: 'admin/sessions', element: <UserSessionsPage /> },
-      { path: 'admin/visitors', element: <VisitorAnalyticsPage /> },
-      { path: 'admin/activity', element: <DailyActivityPage /> },
+    ],
+  },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { path: 'dashboard', element: <AnalyticsDashboardPage /> },
+      { path: 'sessions', element: <UserSessionsPage /> },
+      { path: 'visitors', element: <VisitorAnalyticsPage /> },
+      { path: 'activity', element: <DailyActivityPage /> },
     ],
   },
 ])

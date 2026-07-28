@@ -1,14 +1,18 @@
+import { Eye, CalendarRange, CalendarDays, Layers } from 'lucide-react'
 import { useVisitorAnalytics } from '../hooks/useVisitorAnalytics'
 import { StatCard } from '../components/StatCard'
+import { LazyBarChart } from '../components/LazyBarChart'
 import { Spinner } from '../../../shared/components/Spinner'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
+import { PageHeader } from '../../../shared/components/PageHeader'
+import { SurfaceCard } from '../../../shared/components/SurfaceCard'
 
 export function VisitorAnalyticsPage() {
   const { data, isLoading, isError } = useVisitorAnalytics()
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex justify-center py-16">
         <Spinner />
       </div>
     )
@@ -19,25 +23,49 @@ export function VisitorAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Visitor Analytics</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Approximate unique-visitor counts powered by Redis HyperLogLog &mdash; small margin of error, constant
-          memory regardless of visitor volume.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        title="Visitor Analytics"
+        description="Approximate unique-visitor counts via Redis HyperLogLog — ~0.81% error, constant memory."
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Daily Visitors" value={data.dailyVisitors} hint="PFCOUNT visitors:daily:*" />
-        <StatCard label="Weekly Visitors" value={data.weeklyVisitors} hint="PFCOUNT visitors:weekly:*" />
-        <StatCard label="Monthly Visitors" value={data.monthlyVisitors} hint="PFCOUNT visitors:monthly:*" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Daily Visitors" value={data.dailyVisitors} hint="PFCOUNT visitors:daily:*" icon={Eye} />
+        <StatCard
+          label="Weekly Visitors"
+          value={data.weeklyVisitors}
+          hint="PFCOUNT visitors:weekly:*"
+          icon={CalendarRange}
+        />
+        <StatCard
+          label="Monthly Visitors"
+          value={data.monthlyVisitors}
+          hint="PFCOUNT visitors:monthly:*"
+          icon={CalendarDays}
+        />
         <StatCard
           label="Merged (Last 7 Days)"
           value={data.mergedLast7DaysVisitors}
           hint="PFCOUNT across 7 daily keys"
+          icon={Layers}
         />
       </div>
+
+      <SurfaceCard className="mt-8">
+        <h2 className="text-base font-semibold text-ink">Visitor comparison</h2>
+        <p className="mt-1 text-xs text-ink-subtle">HyperLogLog cardinalities across time windows</p>
+        <div className="mt-2">
+          <LazyBarChart
+            data={[
+              { name: 'Daily', value: data.dailyVisitors },
+              { name: 'Weekly', value: data.weeklyVisitors },
+              { name: 'Monthly', value: data.monthlyVisitors },
+              { name: 'Merged 7d', value: data.mergedLast7DaysVisitors },
+            ]}
+            valueLabel="Visitors"
+          />
+        </div>
+      </SurfaceCard>
     </div>
   )
 }

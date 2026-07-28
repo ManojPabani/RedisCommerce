@@ -1,15 +1,32 @@
+import type { LucideIcon } from 'lucide-react'
+import { cn } from '../../../shared/utils/cn'
+
 interface StatCardProps {
   label: string
   value: string | number
   hint?: string
+  icon?: LucideIcon
+  className?: string
 }
 
-export function StatCard({ label, value, hint }: StatCardProps) {
+export function StatCard({ label, value, hint, icon: Icon, className = '' }: StatCardProps) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+    <div
+      className={cn(
+        'rounded-xl border border-border bg-surface p-5 shadow-card transition-shadow hover:shadow-elevated',
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-ink-subtle">{label}</p>
+        {Icon && (
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
+            <Icon className="h-4 w-4" strokeWidth={1.75} />
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-ink">{value}</p>
+      {hint && <p className="mt-1.5 text-xs text-ink-subtle">{hint}</p>}
     </div>
   )
 }

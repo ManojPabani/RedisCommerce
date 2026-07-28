@@ -1,7 +1,9 @@
 import type { MouseEvent } from 'react'
+import { toast } from 'sonner'
 import { CURRENT_USER_ID } from '../../../core/constants/currentUser'
 import { useFavorites } from '../hooks/useFavorites'
 import { useToggleFavorite } from '../hooks/useToggleFavorite'
+import { cn } from '../../../shared/utils/cn'
 
 interface FavoriteButtonProps {
   productId: number
@@ -18,7 +20,15 @@ export function FavoriteButton({ productId, name, price }: FavoriteButtonProps) 
   function handleClick(event: MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
-    toggleFavorite.mutate({ productId, name, price, isFavorite })
+    toggleFavorite.mutate(
+      { productId, name, price, isFavorite },
+      {
+        onSuccess: () => {
+          toast.success(isFavorite ? `Removed ${name} from favorites` : `Saved ${name} to favorites`)
+        },
+        onError: () => toast.error('Could not update favorites'),
+      },
+    )
   }
 
   return (
@@ -28,11 +38,17 @@ export function FavoriteButton({ productId, name, price }: FavoriteButtonProps) 
       aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       aria-pressed={isFavorite}
       disabled={toggleFavorite.isPending}
-      className="rounded-full p-1.5 leading-none hover:bg-slate-100 disabled:opacity-50"
+      className={cn(
+        'rounded-full bg-surface/90 p-2 leading-none shadow-sm backdrop-blur-sm transition-all duration-150',
+        'hover:bg-surface hover:scale-105 disabled:opacity-50',
+      )}
     >
       <svg
         viewBox="0 0 24 24"
-        className={`h-5 w-5 ${isFavorite ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-slate-400'}`}
+        className={cn(
+          'h-5 w-5 transition-colors',
+          isFavorite ? 'fill-accent stroke-accent' : 'fill-none stroke-ink-muted',
+        )}
         strokeWidth={1.5}
       >
         <path
