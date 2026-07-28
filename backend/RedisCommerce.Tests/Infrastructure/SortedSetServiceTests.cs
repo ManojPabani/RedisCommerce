@@ -83,4 +83,16 @@ public class SortedSetServiceTests
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task RemoveAsync_CallsSortedSetRemove()
+    {
+        _database
+            .Setup(d => d.SortedSetRemoveAsync("analytics:daily-active-counts", "20260601", It.IsAny<CommandFlags>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.RemoveAsync("analytics:daily-active-counts", "20260601");
+
+        Assert.True(result);
+    }
 }
