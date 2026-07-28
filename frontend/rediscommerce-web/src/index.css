@@ -1,6 +1,102 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  background-color: #f8fafc;
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-canvas: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #94a3b8;
+
+  --color-accent: #dc382c;
+  --color-accent-hover: #c12f24;
+  --color-accent-soft: #fef2f2;
+  --color-accent-fg: #ffffff;
+
+  --color-success: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-info: #2563eb;
+  --color-info-soft: #eff6ff;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-elevated: 0 4px 16px rgb(15 23 42 / 0.08);
+}
+
+@layer base {
+  .dark {
+    --color-canvas: #0b1220;
+    --color-surface: #111827;
+    --color-surface-muted: #1a2332;
+    --color-border: #243044;
+    --color-border-strong: #334155;
+
+    --color-ink: #f1f5f9;
+    --color-ink-muted: #94a3b8;
+    --color-ink-subtle: #64748b;
+
+    --color-accent: #f04438;
+    --color-accent-hover: #dc382c;
+    --color-accent-soft: rgb(220 56 44 / 0.15);
+    --color-accent-fg: #ffffff;
+
+    --color-success: #34d399;
+    --color-success-soft: rgb(5 150 105 / 0.15);
+    --color-warning: #fbbf24;
+    --color-warning-soft: rgb(217 119 6 / 0.15);
+    --color-danger: #f87171;
+    --color-danger-soft: rgb(220 38 38 / 0.15);
+    --color-info: #60a5fa;
+    --color-info-soft: rgb(37 99 235 / 0.15);
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.45);
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
