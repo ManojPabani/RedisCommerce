@@ -42,6 +42,7 @@ builder.Services.AddScoped<IListService, ListService>();
 builder.Services.AddScoped<ISetService, SetService>();
 builder.Services.AddScoped<ISortedSetService, SortedSetService>();
 builder.Services.AddScoped<IBitmapService, BitmapService>();
+builder.Services.AddScoped<IHyperLogLogService, HyperLogLogService>();
 
 // Centralized TTL policy (Phase 3).
 builder.Services.AddScoped<ITTLPolicyProvider, TTLPolicyProvider>();
@@ -71,6 +72,10 @@ builder.Services.AddScoped<IActivityTrackingService, ActivityTrackingService>();
 // Session management (Redis String + sliding TTL).
 builder.Services.AddScoped<ISessionRepository, RedisSessionRepository>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+
+// Unique visitor analytics (Redis HyperLogLog).
+builder.Services.AddScoped<IVisitorAnalyticsRepository, RedisVisitorAnalyticsRepository>();
+builder.Services.AddScoped<IVisitorAnalyticsService, VisitorAnalyticsService>();
 
 // Expiration event monitoring (Redis keyspace notifications).
 builder.Services.AddScoped<IExpirationNotificationService, ExpirationNotificationService>();
