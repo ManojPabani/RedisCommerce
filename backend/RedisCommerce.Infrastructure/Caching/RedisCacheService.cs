@@ -32,4 +32,9 @@ public class RedisCacheService : IRedisCacheService
     {
         await Database.KeyDeleteAsync(key);
     }
+
+    public async Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
+    {
+        return await Database.KeyExpireAsync(key, expiration);
+    }
 }
