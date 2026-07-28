@@ -79,4 +79,24 @@ public class ListServiceTests
 
         Assert.Equal(5, result);
     }
+
+    [Fact]
+    public async Task RangeAsync_ReturnsEntriesInOrder()
+    {
+        _database
+            .Setup(d => d.ListRangeAsync("expiration-events", 0, 9, It.IsAny<CommandFlags>()))
+            .ReturnsAsync([(RedisValue)"event-1", (RedisValue)"event-2"]);
+
+        var result = await _sut.RangeAsync("expiration-events", 0, 9);
+
+        Assert.Equal(["event-1", "event-2"], result);
+    }
+
+    [Fact]
+    public async Task TrimAsync_CallsListTrim()
+    {
+        await _sut.TrimAsync("expiration-events", 0, 99);
+
+        _database.Verify(d => d.ListTrimAsync("expiration-events", 0, 99, It.IsAny<CommandFlags>()), Times.Once);
+    }
 }
