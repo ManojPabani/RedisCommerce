@@ -34,8 +34,13 @@ public class FavoriteServiceTests
     public async Task GetFavoritesAsync_ReturnsEnrichedProductDetails()
     {
         _favoriteRepository.Setup(r => r.GetAllAsync(1001)).ReturnsAsync([10, 50]);
-        _productRepository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(CreateProduct(10));
-        _productRepository.Setup(r => r.GetByIdAsync(50)).ReturnsAsync(CreateProduct(50));
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, Product>
+            {
+                [10] = CreateProduct(10),
+                [50] = CreateProduct(50),
+            });
 
         var result = await _sut.GetFavoritesAsync(1001);
 

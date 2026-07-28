@@ -17,14 +17,37 @@ public class ProductRepository : IProductRepository
     public async Task<Product?> GetByIdAsync(int id) =>
         await _context.Products.FindAsync(id);
 
+    public async Task<IReadOnlyDictionary<int, Product>> GetByIdsAsync(IEnumerable<int> ids)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0)
+        {
+            return new Dictionary<int, Product>();
+        }
+
+        var products = await _context.Products
+            .AsNoTracking()
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync();
+
+        return products.ToDictionary(p => p.Id);
+    }
+
     public async Task<IEnumerable<Product>> GetAllAsync() =>
         await _context.Products.AsNoTracking().ToListAsync();
 
-    public async Task<IEnumerable<Product>> SearchAsync(string query) =>
-        await _context.Products
+    public async Task<IEnumerable<Product>> SearchAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        return await _context.Products
             .AsNoTracking()
             .Where(p => EF.Functions.Like(p.Name, $"%{query}%"))
             .ToListAsync();
+    }
 
     public async Task<Product> AddAsync(Product product)
     {
