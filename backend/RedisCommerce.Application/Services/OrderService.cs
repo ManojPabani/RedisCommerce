@@ -13,6 +13,7 @@ public class OrderService : IOrderService
     private readonly IProductRepository _productRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderQueueRepository _orderQueueRepository;
+    private readonly IActivityTrackingService _activityTracking;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
@@ -20,12 +21,14 @@ public class OrderService : IOrderService
         IProductRepository productRepository,
         IOrderRepository orderRepository,
         IOrderQueueRepository orderQueueRepository,
+        IActivityTrackingService activityTracking,
         ILogger<OrderService> logger)
     {
         _cartService = cartService;
         _productRepository = productRepository;
         _orderRepository = orderRepository;
         _orderQueueRepository = orderQueueRepository;
+        _activityTracking = activityTracking;
         _logger = logger;
     }
 
@@ -67,6 +70,7 @@ public class OrderService : IOrderService
         await _cartService.ClearCartAsync(request.UserId);
 
         await _orderQueueRepository.EnqueueAsync(created.Id);
+        await _activityTracking.TrackActivityAsync(request.UserId, ActivityType.Checkout);
         _logger.LogInformation("Order Added To Queue: {OrderId}", created.Id);
 
         return created.ToResponse();
