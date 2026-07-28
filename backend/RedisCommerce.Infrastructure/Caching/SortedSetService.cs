@@ -24,4 +24,7 @@ public class SortedSetService : RedisServiceBase, ISortedSetService
 
     public async Task<double?> ScoreAsync(string key, string member) =>
         await Database.SortedSetScoreAsync(key, member);
+
+    public async Task<bool> RemoveAsync(string key, string member) =>
+        await Database.SortedSetRemoveAsync(key, member);
 }
