@@ -11,45 +11,66 @@ namespace RedisCommerce.Application.Services;
 
 public class ProductService : IProductService
 {
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
-
     private readonly IProductRepository _repository;
     private readonly IRedisCacheService _cache;
     private readonly IProductPopularityService _popularity;
+    private readonly ITTLPolicyProvider _ttlPolicy;
+    private readonly IActivityTrackingService _activityTracking;
+    private readonly IVisitorAnalyticsService _visitorAnalytics;
     private readonly ILogger<ProductService> _logger;
 
     public ProductService(
         IProductRepository repository,
         IRedisCacheService cache,
         IProductPopularityService popularity,
+        ITTLPolicyProvider ttlPolicy,
+        IActivityTrackingService activityTracking,
+        IVisitorAnalyticsService visitorAnalytics,
         ILogger<ProductService> logger)
     {
         _repository = repository;
         _cache = cache;
         _popularity = popularity;
+        _ttlPolicy = ttlPolicy;
+        _activityTracking = activityTracking;
+        _visitorAnalytics = visitorAnalytics;
         _logger = logger;
     }
 
-    public async Task<ProductResponse> GetByIdAsync(int id)
+    public async Task<ProductResponse> GetByIdAsync(int id, int? viewerUserId = null, string? visitorId = null)
     {
         var key = CacheKeys.Product(id);
         var cached = await _cache.GetAsync(key);
 
+        ProductResponse response;
         if (cached is not null)
         {
             _logger.LogInformation("CACHE HIT: {Key}", key);
             await _popularity.RecordViewAsync(id);
-            return JsonSerializer.Deserialize<ProductResponse>(cached)!;
+            response = JsonSerializer.Deserialize<ProductResponse>(cached)!;
+        }
+        else
+        {
+            _logger.LogInformation("CACHE MISS: {Key}", key);
+
+            var product = await _repository.GetByIdAsync(id)
+                ?? throw new ProductNotFoundException(id);
+
+            response = product.ToResponse();
+            var ttl = _ttlPolicy.GetTtl(RedisObjectType.Product)!.Value;
+            await _cache.SetAsync(key, JsonSerializer.Serialize(response), ttl);
+            await _popularity.RecordViewAsync(id);
         }
 
-        _logger.LogInformation("CACHE MISS: {Key}", key);
+        if (viewerUserId.HasValue)
+        {
+            await _activityTracking.TrackActivityAsync(viewerUserId.Value, ActivityType.ProductView);
+        }
 
-        var product = await _repository.GetByIdAsync(id)
-            ?? throw new ProductNotFoundException(id);
-
-        var response = product.ToResponse();
-        await _cache.SetAsync(key, JsonSerializer.Serialize(response), CacheExpiration);
-        await _popularity.RecordViewAsync(id);
+        if (!string.IsNullOrWhiteSpace(visitorId))
+        {
+            await _visitorAnalytics.RecordVisitAsync(visitorId);
+        }
 
         return response;
     }
@@ -57,6 +78,18 @@ public class ProductService : IProductService
     public async Task<IEnumerable<ProductResponse>> GetAllAsync()
     {
         var products = await _repository.GetAllAsync();
+        return products.Select(p => p.ToResponse());
+    }
+
+    public async Task<IEnumerable<ProductResponse>> SearchAsync(string query, int? viewerUserId = null)
+    {
+        var products = await _repository.SearchAsync(query);
+
+        if (viewerUserId.HasValue)
+        {
+            await _activityTracking.TrackActivityAsync(viewerUserId.Value, ActivityType.Search);
+        }
+
         return products.Select(p => p.ToResponse());
     }
 
