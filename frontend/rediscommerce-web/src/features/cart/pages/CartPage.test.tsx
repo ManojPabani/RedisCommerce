@@ -51,7 +51,7 @@ describe('CartPage', () => {
     renderWithProviders(<CartPage />)
 
     expect(await screen.findByText('Wireless Mouse')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Increase quantity').previousElementSibling).toHaveTextContent('2')
     expect(screen.getByRole('button', { name: 'Checkout' })).toBeInTheDocument()
   })
 })
