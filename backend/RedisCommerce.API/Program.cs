@@ -1,7 +1,9 @@
 using Asp.Versioning;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RedisCommerce.API.Middleware;
+using RedisCommerce.Application.Configuration;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using RedisCommerce.Application.Validators;
@@ -18,8 +20,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<RedisCommerceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(builder.Configuration["RedisSettings:ConnectionString"]!));
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(RedisOptions.SectionName));
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(sp.GetRequiredService<IOptions<RedisOptions>>().Value.ConnectionString));
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
@@ -29,6 +33,9 @@ builder.Services.AddScoped<IHashService, HashService>();
 builder.Services.AddScoped<IListService, ListService>();
 builder.Services.AddScoped<ISetService, SetService>();
 builder.Services.AddScoped<ISortedSetService, SortedSetService>();
+
+// Centralized TTL policy (Phase 3).
+builder.Services.AddScoped<ITTLPolicyProvider, TTLPolicyProvider>();
 
 // Shopping cart (Redis Hash).
 builder.Services.AddScoped<ICartRepository, RedisCartRepository>();
