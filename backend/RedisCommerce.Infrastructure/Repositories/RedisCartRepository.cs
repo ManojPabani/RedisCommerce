@@ -5,13 +5,13 @@ namespace RedisCommerce.Infrastructure.Repositories;
 
 public class RedisCartRepository : ICartRepository
 {
-    private static readonly TimeSpan CartExpiration = TimeSpan.FromHours(24);
-
     private readonly IHashService _hashService;
+    private readonly ITTLPolicyProvider _ttlPolicy;
 
-    public RedisCartRepository(IHashService hashService)
+    public RedisCartRepository(IHashService hashService, ITTLPolicyProvider ttlPolicy)
     {
         _hashService = hashService;
+        _ttlPolicy = ttlPolicy;
     }
 
     public async Task<IDictionary<int, int>> GetCartAsync(int userId)
@@ -30,14 +30,14 @@ public class RedisCartRepository : ICartRepository
     {
         var key = CacheKeys.Cart(userId);
         await _hashService.HashSetAsync(key, productId.ToString(), quantity.ToString());
-        await _hashService.ExpireAsync(key, CartExpiration);
+        await _hashService.ExpireAsync(key, _ttlPolicy.GetTtl(RedisObjectType.Cart)!.Value);
     }
 
     public async Task RemoveItemAsync(int userId, int productId)
     {
         var key = CacheKeys.Cart(userId);
         await _hashService.HashDeleteAsync(key, productId.ToString());
-        await _hashService.ExpireAsync(key, CartExpiration);
+        await _hashService.ExpireAsync(key, _ttlPolicy.GetTtl(RedisObjectType.Cart)!.Value);
     }
 
     public async Task ClearAsync(int userId)

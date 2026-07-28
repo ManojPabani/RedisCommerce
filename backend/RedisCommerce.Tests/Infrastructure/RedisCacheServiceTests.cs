@@ -68,4 +68,20 @@ public class RedisCacheServiceTests
 
         _database.Verify(d => d.KeyDeleteAsync("product:1", It.IsAny<CommandFlags>()), Times.Once);
     }
+
+    [Fact]
+    public async Task RefreshExpirationAsync_TouchesTtlWithoutRewritingValue()
+    {
+        var ttl = TimeSpan.FromMinutes(30);
+        _database
+            .Setup(d => d.KeyExpireAsync("session:abc", ttl, It.IsAny<ExpireWhen>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.RefreshExpirationAsync("session:abc", ttl);
+
+        Assert.True(result);
+        _database.Verify(d => d.StringSetAsync(
+            It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<Expiration>(), It.IsAny<ValueCondition>(), It.IsAny<CommandFlags>()),
+            Times.Never);
+    }
 }
