@@ -60,6 +60,10 @@ builder.Services.AddHostedService<OrderProcessingWorker>();
 builder.Services.AddScoped<IActivityTrackingRepository, RedisActivityTrackingRepository>();
 builder.Services.AddScoped<IActivityTrackingService, ActivityTrackingService>();
 
+// Session management (Redis String + sliding TTL).
+builder.Services.AddScoped<ISessionRepository, RedisSessionRepository>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+
 builder.Services.AddScoped<IProductService, ProductService>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
@@ -122,6 +126,8 @@ app.UseHttpsRedirection();
 app.UseCors();
 
 app.UseAuthorization();
+
+app.UseMiddleware<SessionMiddleware>();
 
 app.MapControllers();
 
