@@ -9,6 +9,7 @@ using RedisCommerce.Application.Services;
 using RedisCommerce.Application.Validators;
 using RedisCommerce.Infrastructure.Caching;
 using RedisCommerce.Infrastructure.Data;
+using RedisCommerce.Infrastructure.Messaging;
 using RedisCommerce.Infrastructure.Repositories;
 using RedisCommerce.Infrastructure.Workers;
 using StackExchange.Redis;
@@ -46,6 +47,10 @@ builder.Services.AddScoped<IHyperLogLogService, HyperLogLogService>();
 
 // Centralized TTL policy (Phase 3).
 builder.Services.AddScoped<ITTLPolicyProvider, TTLPolicyProvider>();
+
+// Redis Pub/Sub abstraction (Phase 4 general-purpose business events).
+builder.Services.AddScoped<IRedisPublisher, RedisPublisher>();
+builder.Services.AddScoped<IRedisSubscriber, RedisSubscriber>();
 
 // Shopping cart (Redis Hash).
 builder.Services.AddScoped<ICartRepository, RedisCartRepository>();
