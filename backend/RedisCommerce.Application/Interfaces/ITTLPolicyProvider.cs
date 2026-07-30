@@ -8,6 +8,7 @@ public enum RedisObjectType
     Analytics,
     Popularity,
     Favorites,
+    Notification,
 }
 
 /// <summary>
