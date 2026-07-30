@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using RedisCommerce.Domain.Entities;
@@ -16,6 +18,7 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _orderRepository = new();
     private readonly Mock<IOrderQueueRepository> _orderQueueRepository = new();
     private readonly Mock<IActivityTrackingService> _activityTracking = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly OrderService _sut;
 
     public OrderServiceTests()
@@ -26,6 +29,7 @@ public class OrderServiceTests
             _orderRepository.Object,
             _orderQueueRepository.Object,
             _activityTracking.Object,
+            _publisher.Object,
             Mock.Of<ILogger<OrderService>>());
 
         _orderRepository
@@ -78,6 +82,8 @@ public class OrderServiceTests
         Assert.Equal(55m, result.TotalAmount);
         Assert.Equal(123, result.Id);
         Assert.Equal("Pending", result.Status);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Orders, It.Is<OrderCreatedEvent>(e => e.Payload.OrderId == 123 && e.Payload.UserId == 1001)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Cart, It.Is<CartCheckedOutEvent>(e => e.Payload.OrderId == 123)), Times.Once);
     }
 
     [Fact]
@@ -135,5 +141,39 @@ public class OrderServiceTests
         await Assert.ThrowsAsync<ProductNotFoundException>(() => _sut.CheckoutAsync(new CheckoutRequest(1001)));
 
         _orderQueueRepository.Verify(q => q.EnqueueAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelAsync_PendingOrder_SetsCancelledAndPublishesEvents()
+    {
+        var order = new Order { Id = 5, UserId = 1001, Status = OrderStatus.Pending, TotalAmount = 20m };
+        _orderRepository.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(order);
+
+        var result = await _sut.CancelAsync(5);
+
+        Assert.Equal("Cancelled", result.Status);
+        _orderRepository.Verify(r => r.UpdateAsync(It.Is<Order>(o => o.Status == OrderStatus.Cancelled)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Orders, It.Is<OrderStatusChangedEvent>(
+            e => e.Payload.OrderId == 5 && e.Payload.PreviousStatus == OrderStatus.Pending && e.Payload.NewStatus == OrderStatus.Cancelled)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Orders, It.Is<OrderCancelledEvent>(e => e.Payload.OrderId == 5)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelAsync_OrderDoesNotExist_ThrowsOrderNotFoundException()
+    {
+        _orderRepository.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Order?)null);
+
+        await Assert.ThrowsAsync<OrderNotFoundException>(() => _sut.CancelAsync(999));
+    }
+
+    [Fact]
+    public async Task CancelAsync_AlreadyDelivered_ThrowsInvalidOrderStateException()
+    {
+        var order = new Order { Id = 5, UserId = 1001, Status = OrderStatus.Delivered, TotalAmount = 20m };
+        _orderRepository.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(order);
+
+        await Assert.ThrowsAsync<InvalidOrderStateException>(() => _sut.CancelAsync(5));
+
+        _orderRepository.Verify(r => r.UpdateAsync(It.IsAny<Order>()), Times.Never);
     }
 }

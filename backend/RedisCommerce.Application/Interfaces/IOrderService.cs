@@ -5,4 +5,5 @@ namespace RedisCommerce.Application.Interfaces;
 public interface IOrderService
 {
     Task<OrderResponse> CheckoutAsync(CheckoutRequest request);
+    Task<OrderResponse> CancelAsync(int orderId);
 }

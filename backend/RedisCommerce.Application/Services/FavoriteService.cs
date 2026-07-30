@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Domain.Exceptions;
 
@@ -10,15 +11,18 @@ public class FavoriteService : IFavoriteService
 {
     private readonly IFavoriteRepository _favoriteRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<FavoriteService> _logger;
 
     public FavoriteService(
         IFavoriteRepository favoriteRepository,
         IProductRepository productRepository,
+        IRedisPublisher publisher,
         ILogger<FavoriteService> logger)
     {
         _favoriteRepository = favoriteRepository;
         _productRepository = productRepository;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -48,6 +52,10 @@ public class FavoriteService : IFavoriteService
         if (added)
         {
             _logger.LogInformation("Favorite Added: {Key} product {ProductId}", CacheKeys.Favorites(userId), productId);
+            await _publisher.PublishAsync(RedisChannels.Users, new FavoriteAddedEvent
+            {
+                Payload = new FavoriteAddedPayload(userId, productId),
+            });
         }
     }
 
@@ -57,6 +65,10 @@ public class FavoriteService : IFavoriteService
         if (removed)
         {
             _logger.LogInformation("Favorite Removed: {Key} product {ProductId}", CacheKeys.Favorites(userId), productId);
+            await _publisher.PublishAsync(RedisChannels.Users, new FavoriteRemovedEvent
+            {
+                Payload = new FavoriteRemovedPayload(userId, productId),
+            });
         }
     }
 }

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Mapping;
 using RedisCommerce.Domain.Entities;
@@ -14,6 +16,7 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderQueueRepository _orderQueueRepository;
     private readonly IActivityTrackingService _activityTracking;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
@@ -22,6 +25,7 @@ public class OrderService : IOrderService
         IOrderRepository orderRepository,
         IOrderQueueRepository orderQueueRepository,
         IActivityTrackingService activityTracking,
+        IRedisPublisher publisher,
         ILogger<OrderService> logger)
     {
         _cartService = cartService;
@@ -29,6 +33,7 @@ public class OrderService : IOrderService
         _orderRepository = orderRepository;
         _orderQueueRepository = orderQueueRepository;
         _activityTracking = activityTracking;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -77,6 +82,44 @@ public class OrderService : IOrderService
         await _activityTracking.TrackActivityAsync(request.UserId, ActivityType.Checkout);
         _logger.LogInformation("Order Added To Queue: {OrderId}", created.Id);
 
+        await _publisher.PublishAsync(RedisChannels.Orders, new OrderCreatedEvent
+        {
+            Payload = new OrderCreatedPayload(created.Id, created.UserId, created.TotalAmount, created.Items.Count),
+        });
+        await _publisher.PublishAsync(RedisChannels.Cart, new CartCheckedOutEvent
+        {
+            Payload = new CartCheckedOutPayload(created.UserId, created.Id, created.TotalAmount),
+        });
+
         return created.ToResponse();
+    }
+
+    public async Task<OrderResponse> CancelAsync(int orderId)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId)
+            ?? throw new OrderNotFoundException(orderId);
+
+        if (order.Status is OrderStatus.Delivered or OrderStatus.Cancelled)
+        {
+            throw new InvalidOrderStateException(orderId, order.Status);
+        }
+
+        var previousStatus = order.Status;
+        order.Status = OrderStatus.Cancelled;
+        order.UpdatedDate = DateTime.UtcNow;
+        await _orderRepository.UpdateAsync(order);
+
+        _logger.LogInformation("Order Cancelled: {OrderId}", order.Id);
+
+        await _publisher.PublishAsync(RedisChannels.Orders, new OrderStatusChangedEvent
+        {
+            Payload = new OrderStatusChangedPayload(order.Id, order.UserId, previousStatus, OrderStatus.Cancelled),
+        });
+        await _publisher.PublishAsync(RedisChannels.Orders, new OrderCancelledEvent
+        {
+            Payload = new OrderCancelledPayload(order.Id, order.UserId),
+        });
+
+        return order.ToResponse();
     }
 }

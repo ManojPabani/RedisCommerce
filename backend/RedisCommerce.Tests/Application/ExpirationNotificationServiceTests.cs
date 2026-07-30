@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using Xunit;
@@ -13,11 +14,12 @@ public class ExpirationNotificationServiceTests
 {
     private readonly Mock<IListService> _listService = new();
     private readonly Mock<ISessionRepository> _sessionRepository = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly ExpirationNotificationService _sut;
 
     public ExpirationNotificationServiceTests()
     {
-        _sut = new ExpirationNotificationService(_listService.Object, _sessionRepository.Object, Mock.Of<ILogger<ExpirationNotificationService>>());
+        _sut = new ExpirationNotificationService(_listService.Object, _sessionRepository.Object, _publisher.Object, Mock.Of<ILogger<ExpirationNotificationService>>());
     }
 
     [Fact]
@@ -28,6 +30,7 @@ public class ExpirationNotificationServiceTests
         _sessionRepository.Verify(r => r.RemoveFromActiveSetAsync("abc123"), Times.Once);
         _listService.Verify(l => l.LeftPushAsync(CacheKeys.ExpirationEvents, It.IsAny<string>()), Times.Once);
         _listService.Verify(l => l.TrimAsync(CacheKeys.ExpirationEvents, 0, 99), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Sessions, It.Is<SessionExpiredEvent>(e => e.Payload.SessionId == "abc123")), Times.Once);
     }
 
     [Fact]

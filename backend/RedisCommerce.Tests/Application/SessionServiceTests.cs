@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using Xunit;
@@ -12,12 +14,13 @@ public class SessionServiceTests
     private readonly Mock<ISessionRepository> _repository = new();
     private readonly Mock<ITTLPolicyProvider> _ttlPolicy = new();
     private readonly Mock<IActivityTrackingService> _activityTracking = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly SessionService _sut;
 
     public SessionServiceTests()
     {
         _ttlPolicy.Setup(t => t.GetTtl(RedisObjectType.Session)).Returns(TimeSpan.FromMinutes(30));
-        _sut = new SessionService(_repository.Object, _ttlPolicy.Object, _activityTracking.Object, Mock.Of<ILogger<SessionService>>());
+        _sut = new SessionService(_repository.Object, _ttlPolicy.Object, _activityTracking.Object, _publisher.Object, Mock.Of<ILogger<SessionService>>());
     }
 
     [Fact]
@@ -32,6 +35,7 @@ public class SessionServiceTests
         _repository.Verify(r => r.SaveAsync(It.Is<SessionResponse>(s => s.UserId == 1001), TimeSpan.FromMinutes(30)), Times.Once);
         _repository.Verify(r => r.AddToActiveSetAsync(result.SessionId), Times.Once);
         _activityTracking.Verify(a => a.TrackActivityAsync(1001, ActivityType.Login), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Users, It.Is<UserLoggedInEvent>(e => e.Payload.UserId == 1001)), Times.Once);
     }
 
     [Fact]
@@ -71,6 +75,7 @@ public class SessionServiceTests
         _repository.Verify(r => r.DeleteAsync("session-1"), Times.Once);
         _repository.Verify(r => r.RemoveFromActiveSetAsync("session-1"), Times.Once);
         _repository.Verify(r => r.RemoveUserSessionMappingAsync(1001), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Users, It.Is<UserLoggedOutEvent>(e => e.Payload.UserId == 1001 && e.Payload.SessionId == "session-1")), Times.Once);
     }
 
     [Fact]

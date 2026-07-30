@@ -34,4 +34,14 @@ public class OrdersController : ControllerBase
         var order = await _orderService.CheckoutAsync(request);
         return StatusCode(StatusCodes.Status201Created, order);
     }
+
+    [HttpPost("{id:int}/cancel")]
+    [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrderResponse>> Cancel(int id)
+    {
+        var order = await _orderService.CancelAsync(id);
+        return Ok(order);
+    }
 }

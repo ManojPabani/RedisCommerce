@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Domain.Exceptions;
 
@@ -10,15 +11,18 @@ public class CartService : ICartService
 {
     private readonly ICartRepository _cartRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<CartService> _logger;
 
     public CartService(
         ICartRepository cartRepository,
         IProductRepository productRepository,
+        IRedisPublisher publisher,
         ILogger<CartService> logger)
     {
         _cartRepository = cartRepository;
         _productRepository = productRepository;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -38,14 +42,18 @@ public class CartService : ICartService
 
         await SetOrRemoveAsync(userId, request.ProductId, newQuantity);
 
-        return await GetCartAsync(userId);
+        var cart = await GetCartAsync(userId);
+        await PublishCartUpdatedAsync(userId, cart.Items.Count);
+        return cart;
     }
 
     public async Task<CartResponse> UpdateItemAsync(int userId, int productId, UpdateCartItemRequest request)
     {
         await SetOrRemoveAsync(userId, productId, request.Quantity);
 
-        return await GetCartAsync(userId);
+        var cart = await GetCartAsync(userId);
+        await PublishCartUpdatedAsync(userId, cart.Items.Count);
+        return cart;
     }
 
     public async Task<CartResponse> RemoveItemAsync(int userId, int productId)
@@ -53,13 +61,25 @@ public class CartService : ICartService
         await _cartRepository.RemoveItemAsync(userId, productId);
         _logger.LogInformation("Cart Item Removed: {Key} product {ProductId}", CacheKeys.Cart(userId), productId);
 
-        return await GetCartAsync(userId);
+        var cart = await GetCartAsync(userId);
+        await PublishCartUpdatedAsync(userId, cart.Items.Count);
+        return cart;
     }
 
     public async Task ClearCartAsync(int userId)
     {
         await _cartRepository.ClearAsync(userId);
         _logger.LogInformation("Cart Cleared: {Key}", CacheKeys.Cart(userId));
+
+        await PublishCartUpdatedAsync(userId, 0);
+    }
+
+    private async Task PublishCartUpdatedAsync(int userId, int itemCount)
+    {
+        await _publisher.PublishAsync(RedisChannels.Cart, new CartUpdatedEvent
+        {
+            Payload = new CartUpdatedPayload(userId, itemCount),
+        });
     }
 
     private async Task SetOrRemoveAsync(int userId, int productId, int quantity)
