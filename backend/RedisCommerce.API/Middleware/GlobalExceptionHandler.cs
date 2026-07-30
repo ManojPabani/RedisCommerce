@@ -22,7 +22,9 @@ public class GlobalExceptionHandler : IExceptionHandler
         var (statusCode, title, detail) = exception switch
         {
             ProductNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
+            OrderNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
             EmptyCartException => (StatusCodes.Status400BadRequest, "Empty Cart", exception.Message),
+            InvalidOrderStateException => (StatusCodes.Status400BadRequest, "Invalid Order State", exception.Message),
             ValidationException validationException => (
                 StatusCodes.Status400BadRequest,
                 "Validation Failed",

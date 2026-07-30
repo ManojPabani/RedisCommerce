@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 
 namespace RedisCommerce.Application.Services;
@@ -9,17 +11,20 @@ public class SessionService : ISessionService
     private readonly ISessionRepository _repository;
     private readonly ITTLPolicyProvider _ttlPolicy;
     private readonly IActivityTrackingService _activityTracking;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<SessionService> _logger;
 
     public SessionService(
         ISessionRepository repository,
         ITTLPolicyProvider ttlPolicy,
         IActivityTrackingService activityTracking,
+        IRedisPublisher publisher,
         ILogger<SessionService> logger)
     {
         _repository = repository;
         _ttlPolicy = ttlPolicy;
         _activityTracking = activityTracking;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -37,6 +42,7 @@ public class SessionService : ISessionService
                 await _repository.SetUserSessionMappingAsync(request.UserId, existingSessionId, ttl);
                 await _activityTracking.TrackActivityAsync(request.UserId, ActivityType.Login);
                 _logger.LogInformation("Session Refreshed: {SessionId} (reused on re-login)", existingSessionId);
+                await PublishUserLoggedInAsync(request.UserId, existingSessionId);
                 return existingSession;
             }
         }
@@ -58,6 +64,7 @@ public class SessionService : ISessionService
         await _activityTracking.TrackActivityAsync(request.UserId, ActivityType.Login);
 
         _logger.LogInformation("Session Created: {SessionId} for user {UserId}", session.SessionId, request.UserId);
+        await PublishUserLoggedInAsync(request.UserId, session.SessionId);
 
         return session;
     }
@@ -75,6 +82,22 @@ public class SessionService : ISessionService
         }
 
         _logger.LogInformation("Session logged out: {SessionId}", sessionId);
+
+        if (session is not null)
+        {
+            await _publisher.PublishAsync(RedisChannels.Users, new UserLoggedOutEvent
+            {
+                Payload = new UserLoggedOutPayload(session.UserId, sessionId),
+            });
+        }
+    }
+
+    private async Task PublishUserLoggedInAsync(int userId, string sessionId)
+    {
+        await _publisher.PublishAsync(RedisChannels.Users, new UserLoggedInEvent
+        {
+            Payload = new UserLoggedInPayload(userId, sessionId),
+        });
     }
 
     public async Task<SessionResponse?> GetSessionAsync(string sessionId) =>

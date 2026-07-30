@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Mapping;
 using RedisCommerce.Application.Services;
@@ -20,12 +21,13 @@ public class ProductServiceTests
     private readonly Mock<ITTLPolicyProvider> _ttlPolicy = new();
     private readonly Mock<IActivityTrackingService> _activityTracking = new();
     private readonly Mock<IVisitorAnalyticsService> _visitorAnalytics = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly ProductService _sut;
 
     public ProductServiceTests()
     {
         _ttlPolicy.Setup(t => t.GetTtl(RedisObjectType.Product)).Returns(TimeSpan.FromMinutes(30));
-        _sut = new ProductService(_repository.Object, _cache.Object, _popularity.Object, _ttlPolicy.Object, _activityTracking.Object, _visitorAnalytics.Object, Mock.Of<ILogger<ProductService>>());
+        _sut = new ProductService(_repository.Object, _cache.Object, _popularity.Object, _ttlPolicy.Object, _activityTracking.Object, _visitorAnalytics.Object, _publisher.Object, Mock.Of<ILogger<ProductService>>());
     }
 
     private static Product CreateProduct(int id = 1) => new()
@@ -83,16 +85,61 @@ public class ProductServiceTests
     }
 
     [Fact]
-    public async Task UpdateAsync_ExistingProduct_InvalidatesCacheKey()
+    public async Task CreateAsync_PublishesProductCreatedEvent()
+    {
+        _repository
+            .Setup(r => r.AddAsync(It.IsAny<Product>()))
+            .ReturnsAsync((Product p) => { p.Id = 42; return p; });
+
+        var result = await _sut.CreateAsync(new CreateProductRequest("New Product", "Description", 12.5m, 3));
+
+        Assert.Equal(42, result.Id);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Products, It.Is<ProductCreatedEvent>(e => e.Payload.ProductId == 42)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ExistingProduct_InvalidatesCacheKeyAndPublishesProductUpdated()
     {
         var product = CreateProduct();
         _repository.Setup(r => r.GetByIdAsync(product.Id)).ReturnsAsync(product);
-        var request = new UpdateProductRequest("Updated Name", "Updated Description", 19.99m, 5);
+        var request = new UpdateProductRequest("Updated Name", "Updated Description", product.Price, product.StockQuantity);
 
         await _sut.UpdateAsync(product.Id, request);
 
         _repository.Verify(r => r.UpdateAsync(It.IsAny<Product>()), Times.Once);
         _cache.Verify(c => c.RemoveAsync(CacheKeys.Product(product.Id)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Products, It.Is<ProductUpdatedEvent>(e => e.Payload.ProductId == product.Id)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Inventory, It.IsAny<InventoryUpdatedEvent>()), Times.Never);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Products, It.IsAny<PriceChangedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_StockQuantityChanged_PublishesInventoryUpdated()
+    {
+        var product = CreateProduct();
+        var productId = product.Id;
+        var newStockQuantity = product.StockQuantity + 5;
+        _repository.Setup(r => r.GetByIdAsync(product.Id)).ReturnsAsync(product);
+        var request = new UpdateProductRequest(product.Name, product.Description, product.Price, newStockQuantity);
+
+        await _sut.UpdateAsync(product.Id, request);
+
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Inventory, It.Is<InventoryUpdatedEvent>(
+            e => e.Payload.ProductId == productId && e.Payload.NewStockQuantity == newStockQuantity)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PriceChanged_PublishesPriceChanged()
+    {
+        var product = CreateProduct();
+        _repository.Setup(r => r.GetByIdAsync(product.Id)).ReturnsAsync(product);
+        var newPrice = product.Price + 5m;
+        var request = new UpdateProductRequest(product.Name, product.Description, newPrice, product.StockQuantity);
+
+        await _sut.UpdateAsync(product.Id, request);
+
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Products, It.Is<PriceChangedEvent>(
+            e => e.Payload.ProductId == product.Id && e.Payload.NewPrice == newPrice)), Times.Once);
     }
 
     [Fact]
@@ -114,6 +161,7 @@ public class ProductServiceTests
 
         _repository.Verify(r => r.DeleteAsync(product), Times.Once);
         _cache.Verify(c => c.RemoveAsync(CacheKeys.Product(product.Id)), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Products, It.Is<ProductDeletedEvent>(e => e.Payload.ProductId == product.Id)), Times.Once);
     }
 
     [Fact]

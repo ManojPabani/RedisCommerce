@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using RedisCommerce.Domain.Entities;
@@ -13,11 +15,12 @@ public class CartServiceTests
 {
     private readonly Mock<ICartRepository> _cartRepository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly CartService _sut;
 
     public CartServiceTests()
     {
-        _sut = new CartService(_cartRepository.Object, _productRepository.Object, Mock.Of<ILogger<CartService>>());
+        _sut = new CartService(_cartRepository.Object, _productRepository.Object, _publisher.Object, Mock.Of<ILogger<CartService>>());
     }
 
     private static Product CreateProduct(int id = 10) => new()
@@ -52,6 +55,7 @@ public class CartServiceTests
         await _sut.AddItemAsync(1001, new AddCartItemRequest(10, 2));
 
         _cartRepository.Verify(r => r.SetItemQuantityAsync(1001, 10, 2), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Cart, It.Is<CartUpdatedEvent>(e => e.Payload.UserId == 1001)), Times.Once);
     }
 
     [Fact]
@@ -113,5 +117,6 @@ public class CartServiceTests
         await _sut.ClearCartAsync(1001);
 
         _cartRepository.Verify(r => r.ClearAsync(1001), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Cart, It.Is<CartUpdatedEvent>(e => e.Payload.ItemCount == 0)), Times.Once);
     }
 }

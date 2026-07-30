@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 
 namespace RedisCommerce.Infrastructure.Workers;
@@ -49,6 +50,7 @@ public class DailyAnalyticsWorker : BackgroundService
         var visitorAnalytics = scope.ServiceProvider.GetRequiredService<IVisitorAnalyticsService>();
         var sortedSetService = scope.ServiceProvider.GetRequiredService<ISortedSetService>();
         var ttlPolicy = scope.ServiceProvider.GetRequiredService<ITTLPolicyProvider>();
+        var publisher = scope.ServiceProvider.GetRequiredService<IRedisPublisher>();
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var activeCount = await activityTracking.GetTodayCountAsync();
@@ -64,6 +66,11 @@ public class DailyAnalyticsWorker : BackgroundService
             today,
             activeCount,
             visitorSummary.DailyVisitors);
+
+        await publisher.PublishAsync(RedisChannels.Analytics, new AnalyticsGeneratedEvent
+        {
+            Payload = new AnalyticsGeneratedPayload(today, activeCount),
+        });
     }
 
     private static async Task PruneOldEntriesAsync(ISortedSetService sortedSetService, DateOnly today, int retentionDays)

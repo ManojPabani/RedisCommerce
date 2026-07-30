@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using RedisCommerce.Application.Caching;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Services;
 using RedisCommerce.Domain.Entities;
@@ -12,11 +14,12 @@ public class FavoriteServiceTests
 {
     private readonly Mock<IFavoriteRepository> _favoriteRepository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
+    private readonly Mock<IRedisPublisher> _publisher = new();
     private readonly FavoriteService _sut;
 
     public FavoriteServiceTests()
     {
-        _sut = new FavoriteService(_favoriteRepository.Object, _productRepository.Object, Mock.Of<ILogger<FavoriteService>>());
+        _sut = new FavoriteService(_favoriteRepository.Object, _productRepository.Object, _publisher.Object, Mock.Of<ILogger<FavoriteService>>());
     }
 
     private static Product CreateProduct(int id) => new()
@@ -58,6 +61,7 @@ public class FavoriteServiceTests
         await _sut.AddFavoriteAsync(1001, 10);
 
         _favoriteRepository.Verify(r => r.AddAsync(1001, 10), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Users, It.Is<FavoriteAddedEvent>(e => e.Payload.UserId == 1001 && e.Payload.ProductId == 10)), Times.Once);
     }
 
     [Fact]
@@ -79,6 +83,7 @@ public class FavoriteServiceTests
         await _sut.AddFavoriteAsync(1001, 10);
 
         _favoriteRepository.Verify(r => r.AddAsync(1001, 10), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Users, It.IsAny<FavoriteAddedEvent>()), Times.Never);
     }
 
     [Fact]
@@ -89,5 +94,6 @@ public class FavoriteServiceTests
         await _sut.RemoveFavoriteAsync(1001, 10);
 
         _favoriteRepository.Verify(r => r.RemoveAsync(1001, 10), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(RedisChannels.Users, It.Is<FavoriteRemovedEvent>(e => e.Payload.UserId == 1001 && e.Payload.ProductId == 10)), Times.Once);
     }
 }

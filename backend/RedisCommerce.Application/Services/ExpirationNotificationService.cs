@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 
 namespace RedisCommerce.Application.Services;
@@ -12,15 +13,18 @@ public class ExpirationNotificationService : IExpirationNotificationService
 
     private readonly IListService _listService;
     private readonly ISessionRepository _sessionRepository;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<ExpirationNotificationService> _logger;
 
     public ExpirationNotificationService(
         IListService listService,
         ISessionRepository sessionRepository,
+        IRedisPublisher publisher,
         ILogger<ExpirationNotificationService> logger)
     {
         _listService = listService;
         _sessionRepository = sessionRepository;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -39,6 +43,10 @@ public class ExpirationNotificationService : IExpirationNotificationService
             await _sessionRepository.RemoveFromActiveSetAsync(sessionId);
             await RecordEventAsync(expiredKey, "Session Expired");
             _logger.LogInformation("Session Expired: {SessionId}", sessionId);
+            await _publisher.PublishAsync(RedisChannels.Sessions, new SessionExpiredEvent
+            {
+                Payload = new SessionExpiredPayload(sessionId, null),
+            });
             return;
         }
 

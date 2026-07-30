@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RedisCommerce.Application.Caching;
 using RedisCommerce.Application.DTOs;
+using RedisCommerce.Application.Events;
 using RedisCommerce.Application.Interfaces;
 using RedisCommerce.Application.Mapping;
 using RedisCommerce.Domain.Entities;
@@ -17,6 +18,7 @@ public class ProductService : IProductService
     private readonly ITTLPolicyProvider _ttlPolicy;
     private readonly IActivityTrackingService _activityTracking;
     private readonly IVisitorAnalyticsService _visitorAnalytics;
+    private readonly IRedisPublisher _publisher;
     private readonly ILogger<ProductService> _logger;
 
     public ProductService(
@@ -26,6 +28,7 @@ public class ProductService : IProductService
         ITTLPolicyProvider ttlPolicy,
         IActivityTrackingService activityTracking,
         IVisitorAnalyticsService visitorAnalytics,
+        IRedisPublisher publisher,
         ILogger<ProductService> logger)
     {
         _repository = repository;
@@ -34,6 +37,7 @@ public class ProductService : IProductService
         _ttlPolicy = ttlPolicy;
         _activityTracking = activityTracking;
         _visitorAnalytics = visitorAnalytics;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -124,6 +128,12 @@ public class ProductService : IProductService
         };
 
         var created = await _repository.AddAsync(product);
+
+        await _publisher.PublishAsync(RedisChannels.Products, new ProductCreatedEvent
+        {
+            Payload = new ProductCreatedPayload(created.Id, created.Name, created.Price, created.StockQuantity),
+        });
+
         return created.ToResponse();
     }
 
@@ -131,6 +141,9 @@ public class ProductService : IProductService
     {
         var product = await _repository.GetByIdAsync(id)
             ?? throw new ProductNotFoundException(id);
+
+        var previousPrice = product.Price;
+        var previousStock = product.StockQuantity;
 
         product.Name = request.Name;
         product.Description = request.Description;
@@ -143,6 +156,27 @@ public class ProductService : IProductService
         var key = CacheKeys.Product(id);
         await _cache.RemoveAsync(key);
         _logger.LogInformation("CACHE UPDATED: {Key}", key);
+
+        await _publisher.PublishAsync(RedisChannels.Products, new ProductUpdatedEvent
+        {
+            Payload = new ProductUpdatedPayload(product.Id, product.Name, product.Price, product.StockQuantity),
+        });
+
+        if (product.StockQuantity != previousStock)
+        {
+            await _publisher.PublishAsync(RedisChannels.Inventory, new InventoryUpdatedEvent
+            {
+                Payload = new InventoryUpdatedPayload(product.Id, previousStock, product.StockQuantity, product.StockQuantity > 0),
+            });
+        }
+
+        if (product.Price != previousPrice)
+        {
+            await _publisher.PublishAsync(RedisChannels.Products, new PriceChangedEvent
+            {
+                Payload = new PriceChangedPayload(product.Id, previousPrice, product.Price),
+            });
+        }
 
         return product.ToResponse();
     }
@@ -157,5 +191,10 @@ public class ProductService : IProductService
         var key = CacheKeys.Product(id);
         await _cache.RemoveAsync(key);
         _logger.LogInformation("CACHE REMOVED: {Key}", key);
+
+        await _publisher.PublishAsync(RedisChannels.Products, new ProductDeletedEvent
+        {
+            Payload = new ProductDeletedPayload(product.Id, product.Name),
+        });
     }
 }
