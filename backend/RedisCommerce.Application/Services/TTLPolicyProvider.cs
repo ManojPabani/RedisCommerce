@@ -26,6 +26,7 @@ public class TTLPolicyProvider : ITTLPolicyProvider
             RedisObjectType.Analytics => TimeSpan.FromDays(_options.AnalyticsTTLDays),
             RedisObjectType.Popularity => (TimeSpan?)null,
             RedisObjectType.Favorites => (TimeSpan?)null,
+            RedisObjectType.Notification => TimeSpan.FromDays(_options.NotificationTTLDays),
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
 

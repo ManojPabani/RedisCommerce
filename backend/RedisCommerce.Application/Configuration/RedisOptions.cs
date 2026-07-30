@@ -9,4 +9,5 @@ public class RedisOptions
     public int CartTTLHours { get; set; } = 24;
     public int SessionTTLMinutes { get; set; } = 30;
     public int AnalyticsTTLDays { get; set; } = 90;
+    public int NotificationTTLDays { get; set; } = 30;
 }

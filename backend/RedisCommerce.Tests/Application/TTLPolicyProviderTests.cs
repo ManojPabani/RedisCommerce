@@ -20,6 +20,7 @@ public class TTLPolicyProviderTests
             CartTTLHours = 24,
             SessionTTLMinutes = 30,
             AnalyticsTTLDays = 90,
+            NotificationTTLDays = 30,
         });
 
         _sut = new TTLPolicyProvider(options, Mock.Of<ILogger<TTLPolicyProvider>>());
@@ -30,6 +31,7 @@ public class TTLPolicyProviderTests
     [InlineData(RedisObjectType.Cart, 24 * 60 * 60)]
     [InlineData(RedisObjectType.Session, 30 * 60)]
     [InlineData(RedisObjectType.Analytics, 90 * 24 * 60 * 60)]
+    [InlineData(RedisObjectType.Notification, 30 * 24 * 60 * 60)]
     public void GetTtl_ReturnsConfiguredDuration(RedisObjectType type, int expectedSeconds)
     {
         var result = _sut.GetTtl(type);
